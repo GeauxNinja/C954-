@@ -9,6 +9,10 @@
 <body>
 
   <div class="quiz-card">
+    <div class="dataset-switcher">
+      <button class="control-btn dataset-btn" data-key="practice">Scenario Quiz</button>
+      <button class="control-btn dataset-btn" data-key="definitions">Definitions Quiz</button>
+    </div>
     <div id="quizContainer">
       <div class="question" id="qText"></div>
       <div class="choices" id="qChoices"></div>
@@ -16,14 +20,16 @@
     </div>
 
     <div class="controls">
-      <button id="prevBtn">Previous</button>
-      <button id="nextBtn">Next</button>
+      <button class="control-btn" id="prevBtn">Previous</button>
+      <button class="control-btn" id="nextBtn">Next</button>
     </div>
   </div>
 
   <script src="questions.js"></script>
+  <script src="deffs.js"></script>
   <script>
     let idx = 0;
+    let quizQuestions = [];
     const answers = [];
     const choiceOrder = [];
 
@@ -32,7 +38,7 @@
     const qExplain = document.getElementById('qExplain');
     const prevBtn  = document.getElementById('prevBtn');
     const nextBtn  = document.getElementById('nextBtn');
-    const quizQuestions = shuffle(questions.slice());
+    const datasetButtons = document.querySelectorAll('.dataset-btn');
 
     function shuffle(array) {
       const copy = [...array];
@@ -44,6 +50,16 @@
     }
 
     function showQuestion() {
+      if (!quizQuestions.length) {
+        qText.textContent = 'Select a quiz set to begin.';
+        qChoices.innerHTML = '';
+        qExplain.textContent = '';
+        qExplain.className = 'explanation';
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        return;
+      }
+
       const q = quizQuestions[idx];
       const isMulti = Array.isArray(q.answer);
       if (answers[idx] === undefined) {
@@ -56,16 +72,16 @@
         shuffle(Array.from({ length: q.choices.length }, (_, i) => i)));
       qText.textContent = '';
 
-      const numberSpan = document.createElement('span');
-      numberSpan.className = 'question-number';
-      numberSpan.textContent = `Question ${idx + 1}`;
+      const numberBlock = document.createElement('div');
+      numberBlock.className = 'question-number';
+      numberBlock.textContent = `Question ${idx + 1}`;
 
-      const textSpan = document.createElement('span');
-      textSpan.className = 'question-text';
-      textSpan.textContent = q.q;
+      const textBlock = document.createElement('div');
+      textBlock.className = 'question-text';
+      textBlock.textContent = q.q;
 
-      qText.appendChild(numberSpan);
-      qText.appendChild(textSpan);
+      qText.appendChild(numberBlock);
+      qText.appendChild(textBlock);
       qChoices.innerHTML  = '';
       qExplain.textContent = '';
       qExplain.className = 'explanation';
@@ -206,6 +222,31 @@
       qExplain.classList.toggle('wrong', !isCorrect);
     }
 
+    function loadDataset(key) {
+      if (!window.quizBanks || !Array.isArray(window.quizBanks[key])) {
+        qText.textContent = 'Selected quiz set is unavailable.';
+        qChoices.innerHTML = '';
+        qExplain.textContent = '';
+        qExplain.className = 'explanation';
+        prevBtn.disabled = true;
+        nextBtn.disabled = true;
+        return;
+      }
+
+      idx = 0;
+      quizQuestions = shuffle(window.quizBanks[key].slice());
+      answers.length = 0;
+      choiceOrder.length = 0;
+      showQuestion();
+    }
+
+    datasetButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        datasetButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
+        loadDataset(button.dataset.key);
+      });
+    });
+
     prevBtn.addEventListener('click', () => {
       if (idx > 0) {
         idx--; showQuestion();
@@ -218,7 +259,12 @@
       }
     });
 
-    showQuestion();
+    if (datasetButtons.length) {
+      datasetButtons[0].classList.add('active');
+      loadDataset(datasetButtons[0].dataset.key);
+    } else {
+      showQuestion();
+    }
   </script>
 
 </body>
