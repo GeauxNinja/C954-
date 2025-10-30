@@ -25,6 +25,7 @@
   <script>
     let idx = 0;
     const answers = [];
+    const choiceOrder = [];
 
     const qText    = document.getElementById('qText');
     const qChoices = document.getElementById('qChoices');
@@ -32,48 +33,176 @@
     const prevBtn  = document.getElementById('prevBtn');
     const nextBtn  = document.getElementById('nextBtn');
 
+    function shuffle(array) {
+      const copy = [...array];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
     function showQuestion() {
       const q = questions[idx];
-      answers[idx] = answers[idx] || null;     // preserve answer or null
-      qText.textContent = q.q;
+      const isMulti = Array.isArray(q.answer);
+      if (answers[idx] === undefined) {
+        answers[idx] = isMulti ? [] : null;    // initialize answer storage
+      }
+      if (isMulti && !Array.isArray(answers[idx])) {
+        answers[idx] = [];
+      }
+      const order = choiceOrder[idx] || (choiceOrder[idx] =
+        shuffle(Array.from({ length: q.choices.length }, (_, i) => i)));
+      qText.textContent = '';
+
+      const numberSpan = document.createElement('span');
+      numberSpan.className = 'question-number';
+      numberSpan.textContent = `Question ${idx + 1}`;
+
+      const textSpan = document.createElement('span');
+      textSpan.className = 'question-text';
+      textSpan.textContent = q.q;
+
+      qText.appendChild(numberSpan);
+      qText.appendChild(textSpan);
       qChoices.innerHTML  = '';
       qExplain.textContent = '';
       qExplain.className = 'explanation';
+      if (isMulti) {
+        const note = document.createElement('div');
+        note.className = 'multi-select-note';
+        note.textContent = `Select ${q.answer.length} answers.`;
+        qChoices.appendChild(note);
+      }
 
-      q.choices.forEach((choice, i) => {
+      order.forEach((originalIndex, displayIdx) => {
+        const choice = q.choices[originalIndex];
         const label = document.createElement('label');
-        const input = document.createElement('input');
-        input.type = 'radio';
-        input.name = 'ans';
-        input.value = i;
-        input.checked = (answers[idx] === i);
-        input.disabled = (answers[idx] !== null);
+        label.dataset.choiceIndex = originalIndex;
+        label.tabIndex = 0;
 
-        input.addEventListener('change', () => {
-          answers[idx] = i;
-          showExplanation();
+        const letter = String.fromCharCode(97 + displayIdx); // a, b, c...
+        label.appendChild(document.createTextNode(`${letter}) ${choice}`));
+
+        const selectChoice = () => {
+          if (isMulti) {
+            const current = Array.isArray(answers[idx]) ? [...answers[idx]] : [];
+            const selectedIdx = current.indexOf(originalIndex);
+            if (selectedIdx >= 0) {
+              current.splice(selectedIdx, 1);
+            } else {
+              if (current.length >= q.answer.length) {
+                qExplain.textContent = `Only ${q.answer.length} answers can be selected.`;
+                qExplain.classList.remove('correct', 'wrong');
+                return;
+              }
+              current.push(originalIndex);
+            }
+            answers[idx] = current;
+            qChoices.querySelectorAll('label').forEach((child) => {
+              const childIndex = Number(child.dataset.choiceIndex);
+              child.classList.toggle('selected', current.includes(childIndex));
+            });
+            showExplanation();
+          } else {
+            answers[idx] = originalIndex;
+            qChoices.querySelectorAll('label').forEach((child) => child.classList.remove('selected'));
+            label.classList.add('selected');
+            showExplanation();
+          }
+        };
+
+        label.addEventListener('click', selectChoice);
+        label.addEventListener('keypress', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectChoice();
+          }
         });
 
-        label.appendChild(input);
-        label.appendChild(document.createTextNode(choice));
+        if (isMulti) {
+          if (Array.isArray(answers[idx]) && answers[idx].includes(originalIndex)) {
+            label.classList.add('selected');
+          }
+        } else if (answers[idx] === originalIndex) {
+          label.classList.add('selected');
+        }
         qChoices.appendChild(label);
       });
 
       prevBtn.disabled = (idx === 0);
       nextBtn.disabled = (idx === questions.length - 1);
+
+      if (answers[idx] !== null && answers[idx] !== undefined) {
+        showExplanation();
+      }
     }
 
     function showExplanation() {
       const q    = questions[idx];
       const ans  = answers[idx];
-      if (ans === null) return;
-      if (ans === q.answer) {
-        qExplain.textContent = 'Correct. ' + q.explain;
-        qExplain.classList.add('correct');
-      } else {
-        qExplain.textContent = 'NOPE!!! ' + q.explain;
-        qExplain.classList.add('wrong');
+      const baseExplain = q.explain || '';
+      const isMulti = Array.isArray(q.answer);
+
+      qExplain.classList.remove('correct', 'wrong');
+
+      if (isMulti) {
+        if (!Array.isArray(ans) || ans.length === 0) {
+          qExplain.textContent = '';
+          return;
+        }
+        if (ans.length < q.answer.length) {
+          qExplain.textContent = `Select ${q.answer.length} answers to check.`;
+          return;
+        }
+        const uniqueSelections = Array.from(new Set(ans));
+        if (uniqueSelections.length !== q.answer.length) {
+          qExplain.textContent = `Only ${q.answer.length} answers can be selected.`;
+          return;
+        }
+        const sortedSelections = [...uniqueSelections].sort((a, b) => a - b);
+        const sortedCorrect = [...q.answer].sort((a, b) => a - b);
+        const isCorrect = sortedSelections.every((value, index) => value === sortedCorrect[index]);
+
+        if (isCorrect) {
+          qExplain.textContent = baseExplain ? 'Correct. ' + baseExplain : 'Correct!';
+          qExplain.classList.add('correct');
+        } else {
+          const wrongSelections = sortedSelections.filter((value) => !sortedCorrect.includes(value));
+          let detail = '';
+          if (wrongSelections.length && q.why_others_are_not_correct) {
+            detail = wrongSelections
+              .map((choiceIdx) => q.why_others_are_not_correct[choiceIdx])
+              .filter(Boolean)
+              .map((text) => text.trim())
+              .join(' ');
+          }
+          const fallback = baseExplain || 'Review the options and try again.';
+          qExplain.textContent = 'Not quite. ' + (detail || fallback);
+          qExplain.classList.add('wrong');
+        }
+        return;
       }
+
+      if (ans === null || ans === undefined) return;
+
+      const isCorrect = ans === q.answer;
+      const distractorExplain = q.why_others_are_not_correct ? q.why_others_are_not_correct[ans] : '';
+
+      let message = '';
+      if (isCorrect) {
+        message = baseExplain ? 'Correct. ' + baseExplain : 'Correct!';
+      } else if (distractorExplain) {
+        message = 'Not quite. ' + distractorExplain;
+      } else if (baseExplain) {
+        message = 'Not quite. ' + baseExplain;
+      } else {
+        message = 'Not quite.';
+      }
+
+      qExplain.textContent = message;
+      qExplain.classList.toggle('correct', isCorrect);
+      qExplain.classList.toggle('wrong', !isCorrect);
     }
 
     prevBtn.addEventListener('click', () => {
