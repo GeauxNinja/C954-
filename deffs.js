@@ -1,4 +1,5 @@
-const questions = [
+window.quizBanks = window.quizBanks || {};
+window.quizBanks.definitions = [
   {
     q: "What is the primary purpose of a system within an organization?",
     choices: [
@@ -1889,4 +1890,6 @@ const questions = [
       3: "Public relations affects image, not internal process improvement."
     }
   }
-]
+];
+
+window.definitionQuestions = window.quizBanks.definitions;
