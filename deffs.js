@@ -1,4 +1,4 @@
-[
+const questions = [
   {
     q: "What is the primary purpose of a system within an organization?",
     choices: [
