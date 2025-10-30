@@ -23,7 +23,6 @@ body {
               0 0 18px rgba(242, 179, 48, 0.16),
               0 0 8px rgba(242, 179, 48, 0.12);
   padding: 32px;
-  padding-top: 80px;      /* keep space clear for fixed controls */
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -100,17 +99,8 @@ body {
   display: flex;
   justify-content: center;    /* center buttons */
   gap: 10px;
-  margin: 0;
-  position: fixed;
-  left: 50%;
-  top: max(16px, calc(50vh - 292px));
-  transform: translateX(-50%);
-  padding: 12px 20px;
-  background-color: rgba(16, 34, 84, 0.94);
-  border: 1px solid rgba(242, 179, 48, 0.45);
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  z-index: 1000;
+  margin: auto 0 0;
+  padding-top: 16px;
 }
 
 .controls button {
