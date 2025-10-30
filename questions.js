@@ -1,4 +1,5 @@
-const questions = [
+window.quizBanks = window.quizBanks || {};
+window.quizBanks.practice = [
   {
     q: "As the IT Director, you prepare your technology budget and apply Moore’s Law to guide hardware investment. Which is the best example of using Moore’s Law in this context?",
     choices: [
@@ -1958,5 +1959,6 @@ const questions = [
     }
   },
 
-
 ];
+
+window.practiceQuestions = window.quizBanks.practice;
